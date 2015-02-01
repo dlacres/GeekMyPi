@@ -1,0 +1,3 @@
+# Remove lines with comments, ; and blank lines
+sudo bash # Become root
+grep -ve ^# -ve '^;' -ve ^$ smb.conf.backup > smb.new #fix file
