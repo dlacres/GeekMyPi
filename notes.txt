@@ -19,3 +19,4 @@ pdbedit -L # List the samba users
 /media/networkshare # location of mount point Make sure permissions are right 
 edit /etc/fstab # Add the following line:
 //192.168.1.115/tmp /media/networkshare/CameraKitchen cifs credentials=/home/pi/.smbcredentials,uid=1000,gid=1000,iocharset=utf8 0 0
+Add username and password to ~/.smbcredentials
