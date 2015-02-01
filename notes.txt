@@ -1,3 +1,22 @@
-# Remove lines with comments, ; and blank lines
+#------- Remove lines with comments, ; and blank lines
 sudo bash # Become root
 grep -ve ^# -ve '^;' -ve ^$ smb.conf.backup > smb.new #fix file
+
+#------- Configure Samba
+sudo apt-get install samba samba-common-bin # Install samba
+smbpasswd -a pi # Set the samba password for user pi
+/etc/samba/smb.conf # The samba configuration file
+sudo mkdir -m 1777 /data #set permissions and create directory to share
+
+testparm # Test the samba conf file
+service samba restart
+
+smbpasswd -a root #Set the password for the samba server
+smbpasswd -a pi
+
+pdbedit -L # List the samba users
+
+/media/networkshare # location of mount point
+
+
+
