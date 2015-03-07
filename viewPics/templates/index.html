@@ -3,11 +3,24 @@
     <title>Video Streaming Demonstration</title>
   </head>
   <body>
-    <form action="/reset_picture" method="post">
-        <input type="submit" value="Watch" />
+    <form action="/command" method="POST">
+        <input type="submit" name="w" value="||" />
+        <input type="submit" name="b" value="<<" />
+        <input type="submit" name="p" value=">" />
+        <input type="submit" name="f" value=">>" />
     </form>
     <h2>Picture Streaming Demonstration</h2>
     <img src="{{ url_for('picture_feed') }}" style="width:304px;height:228px">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %} 
+            <ul>
+            {% for message in messages %}
+               <li>{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
   </body>
 </html>
 
