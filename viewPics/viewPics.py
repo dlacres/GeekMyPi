@@ -15,6 +15,8 @@ numberString = '000'
 clips = defaultdict(list)
 currentClip=0
 currentIndex=0
+guiCmd=0
+guiCmdOld=4
 
 @app.route('/')
 def index():
@@ -34,40 +36,28 @@ def index():
 
 @app.route('/command', methods=['GET', 'POST'])
 def command():
-    global i, isPlay, isBack, stepForward, stepBackward
-
-    isPlay=False
-    isBack=False
-    stepForward=False
-    stepBackward=False
+    global guiCmd
 
     if request.method == 'POST':
         if '>>' in request.form.values():
-            stepForward=True
+            guiCmd=0 #stepForward=True
         elif '<<' in request.form.values():
-            stepBackward=True
+            guiCmd=1 #stepBackward=True
         elif '>' in request.form.values():
-            isPlay=True
+            guiCmd=2 #isPlay=True
         elif '<' in request.form.values():
-            isBack=True
+            guiCmd=3 #isBack=True
         elif '||' in request.form.values():
-            i=0
+            guiCmd=4
   
     return render_template('index.html')
 
-@app.route('/reset_picture', methods=['GET', 'POST'])
-def reset():
-    global i
-    i=2
-    return render_template('index.html')
-
-
 def gen(stringNumber):
-    global i, isPlay, isBack, clips
+    global guiCmd, isPlay, isBack, clips
 
-    if isPlay:
+    if guiCmd==2: #Play
         frames=clips[stringNumber]
-    else:
+    else:         #Backward Play
         frames=reversed(clips[stringNumber])
 
     for frame in frames:
@@ -78,39 +68,49 @@ def gen(stringNumber):
 
 @app.route('/picture_feed')
 def picture_feed():
-    global i,files, isPlay, iBack, currentClip, currentIndex
+    global guiCmd, guiCmdOld, currentClip, currentIndex
 
-    if isPlay:
-        currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
+    if guiCmd==2: #play one clip
+        if guiCmd==guiCmdOld:
+            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
+        print currentClip
         response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
         currentIndex=0
-        return response
-    elif isBack:
-        currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
+        #return response
+    elif guiCmd==3:#back one clip
+        if guiCmd==guiCmdOld:
+            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
+        print currentClip
         response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
         currentIndex=0
-        return response
-    elif stepForward:
+        #return response
+    elif guiCmd==0:#forward one Pic
         currentIndex=currentIndex+1
         if currentIndex==len(clips[currentClip]):
             currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
             currentIndex=0
+        print currentClip
         response = Response(open(clips[currentClip][currentIndex],'rb').read())
 
-        return response
-    elif stepBackward:
+        #return response
+    elif guiCmd==1:#back one Pic
         currentIndex=currentIndex-1
         if currentIndex==len(clips[currentClip]):
             currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
             currentIndex=0
+        print currentClip
         response = Response(open(clips[currentClip][currentIndex],'rb').read())
 
-        return response
-        
+        #return response
 
+    guiCmdOld=guiCmd                
+    print guiCmd
+    # Pause one pick
     print 'Clip %s index %s' % (currentClip,currentIndex)
-    print clips[currentClip]
-    return Response(open(clips[currentClip][currentIndex],'rb').read())
+    return response
+    #print clips[currentClip]
+    #return Response(open(clips[currentClip][currentIndex],'rb').read())
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
