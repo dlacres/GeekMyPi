@@ -17,11 +17,13 @@ currentClip=0
 currentIndex=0
 guiCmd=0
 guiCmdOld=4
+mySize=0
+response=0
 
 @app.route('/')
 def index():
-    global files, clips, currentClip, currentIndex
-    files=glob.glob("/home/dlacres/Pictures/Feb29/*.jpg")
+    global files, clips, currentClip, currentIndex, mySize
+    files=glob.glob("/home/dlacres/Pictures/camera_115/*.jpg")
     files.sort()
 
     for f in files:
@@ -29,28 +31,77 @@ def index():
         clips[numberString].append(f)
 
     currentClip=min(clips.keys())
-    currentIndex=0
     print currentClip
-    print clips.keys()
-    return render_template('index.html')
+    currentIndex=0
+
+    t=clips[currentClip][0]
+    clipName=t[-25:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
+    templateData = {
+      'mySize': mySize,
+      'clipName' : clipName
+      }
+    return render_template('index.html', **templateData)
+
+#    return render_template('index.html')
 
 @app.route('/command', methods=['GET', 'POST'])
 def command():
-    global guiCmd
+    global guiCmd, mySize, guiCmdOld, currentClip, currentIndex, response
 
     if request.method == 'POST':
-        if '>>' in request.form.values():
-            guiCmd=0 #stepForward=True
-        elif '<<' in request.form.values():
-            guiCmd=1 #stepBackward=True
+        if 'sf' in request.form.values():
+            guiCmd=0 #Step Forward
+        elif 'sb' in request.form.values():
+            guiCmd=1 #Step Backward
         elif '>' in request.form.values():
-            guiCmd=2 #isPlay=True
+            guiCmd=2 #Play Forward
         elif '<' in request.form.values():
-            guiCmd=3 #isBack=True
-        elif '||' in request.form.values():
+            guiCmd=3 #Play Backward
+        elif 'siz' in request.form.values():
             guiCmd=4
-  
-    return render_template('index.html')
+            if mySize==0:
+                mySize=1
+            elif mySize==1:
+                mySize=2
+            elif mySize==2:
+                mySize=0
+
+    if guiCmd==2: #play one clip
+        if guiCmd==guiCmdOld:
+            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
+        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
+        currentIndex=0
+    elif guiCmd==3:#back one clip
+        if guiCmd==guiCmdOld:
+            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
+        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
+        currentIndex=0
+    elif guiCmd==0:#forward one Pic
+        currentIndex=currentIndex+1
+        if currentIndex==len(clips[currentClip]):
+            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
+            currentIndex=0
+        response = Response(open(clips[currentClip][currentIndex],'rb').read())
+    elif guiCmd==1:#back one Pic
+        currentIndex=currentIndex-1
+        if currentIndex==len(clips[currentClip]):
+            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
+            currentIndex=0
+        response = Response(open(clips[currentClip][currentIndex],'rb').read())
+    else:
+        response = Response(open(clips[currentClip][currentIndex],'rb').read())
+        
+
+    guiCmdOld=guiCmd                
+    print 'Clip %s index %s' % (currentClip,currentIndex)
+
+    t=clips[currentClip][0]
+    clipName=t[-25:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
+    templateData = {
+      'mySize': mySize,
+      'clipName' : clipName
+      }
+    return render_template('index.html', **templateData)
 
 def gen(stringNumber):
     global guiCmd, isPlay, isBack, clips
@@ -68,48 +119,9 @@ def gen(stringNumber):
 
 @app.route('/picture_feed')
 def picture_feed():
-    global guiCmd, guiCmdOld, currentClip, currentIndex
+    global response
 
-    if guiCmd==2: #play one clip
-        if guiCmd==guiCmdOld:
-            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
-        print currentClip
-        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
-        currentIndex=0
-        #return response
-    elif guiCmd==3:#back one clip
-        if guiCmd==guiCmdOld:
-            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
-        print currentClip
-        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
-        currentIndex=0
-        #return response
-    elif guiCmd==0:#forward one Pic
-        currentIndex=currentIndex+1
-        if currentIndex==len(clips[currentClip]):
-            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
-            currentIndex=0
-        print currentClip
-        response = Response(open(clips[currentClip][currentIndex],'rb').read())
-
-        #return response
-    elif guiCmd==1:#back one Pic
-        currentIndex=currentIndex-1
-        if currentIndex==len(clips[currentClip]):
-            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
-            currentIndex=0
-        print currentClip
-        response = Response(open(clips[currentClip][currentIndex],'rb').read())
-
-        #return response
-
-    guiCmdOld=guiCmd                
-    print guiCmd
-    # Pause one pick
-    print 'Clip %s index %s' % (currentClip,currentIndex)
     return response
-    #print clips[currentClip]
-    #return Response(open(clips[currentClip][currentIndex],'rb').read())
 
 
 if __name__ == '__main__':

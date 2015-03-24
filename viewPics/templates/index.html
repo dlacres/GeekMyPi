@@ -1,26 +1,22 @@
 <html>
-  <head>
-    <title>Video Streaming Demonstration</title>
-  </head>
   <body>
+    <p>Clip {{clipName}}</p>
     <form action="/command" method="POST">
-        <input type="submit" name="w" value="||" />
-        <input type="submit" name="b" value="<<" />
+        <input type="submit" name="b" value="sb" />
+        <input type="submit" name="f" value="sf" />
         <input type="submit" name="k" value="<" />
         <input type="submit" name="p" value=">" />
-        <input type="submit" name="f" value=">>" />
+        <input type="submit" name="s" value="siz" />
     </form>
-    <h2>Picture Streaming Demonstration</h2>
-    <img src="{{ url_for('picture_feed') }}" style="width:304px;height:228px">
-    {% with messages = get_flashed_messages() %}
-        {% if messages %} 
-            <ul>
-            {% for message in messages %}
-               <li>{{ message }}</li>
-            {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+    {% if mySize==0 %}
+       <img src="{{ url_for('picture_feed') }}" style="width:427px;height:240px">
+    {% endif %}
+    {% if mySize==1 %}
+       <img src="{{ url_for('picture_feed') }}" style="width:853px;height:480px">
+    {% endif %}
+    {% if mySize==2 %}
+       <img src="{{ url_for('picture_feed') }}" style="width:1280px;height:720px">
+    {% endif %}
     {% block content %}{% endblock %}
   </body>
 </html>
