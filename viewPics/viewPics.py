@@ -1,9 +1,11 @@
 #!/usr/bin/env python
-from flask import Flask, render_template, Response, request
-import glob,time
+from flask import Flask,render_template, Response, request
+import glob,time,shutil,os
 from collections import defaultdict
 
 app = Flask(__name__)
+
+#ret=subprocess.call('ping -c 1 192.168.1.108',shell=True,stdout=open('/dev/null','w'),stderr=subprocess.STDOUT)
 
 i=0
 files='abc'
@@ -20,25 +22,52 @@ guiCmdOld=4
 mySize=0
 response=0
 
+def getName(s):
+    for c in s:
+        if c=='/':
+            s=''
+        else:
+            s=s+c
+    return s
+
+def getIndex(s):
+    numDayStr = s[-15:-13]
+    if s[-25:-24]=='/' or s[-25:-24]=='_' or s[-25:-24]=='-':
+        numIdxStr = s[-24:-22]
+        numCamStr = s[-27:-25]
+    else:
+        numIdxStr = s[-25:-22]
+        numCamStr = s[-28:-26]
+    numStr=numCamStr+numIdxStr+numDayStr
+    print numStr
+    return int(numStr)
+
+def getClipName(): 
+    global clips
+    t=clips[currentClip][0]
+    if t[-25:-24]=='/' or t[-25:-24]=='_' or t[-25:-24]=='-':
+        clipName=t[-24:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
+    else:
+        clipName=t[-25:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
+    return clipName
+
 @app.route('/')
 def index():
     global files, clips, currentClip, currentIndex, mySize
-    files=glob.glob("/home/dlacres/Pictures/camera_115/*.jpg")
+    files=glob.glob("/home/dlacres/tmp/*.jpg")
     files.sort()
-
     for f in files:
-        numberString = int(f[-25:-22])
+        numberString=getIndex(f)
         clips[numberString].append(f)
+        print "File %s, number %d" % (f,numberString)
 
     currentClip=min(clips.keys())
-    print currentClip
+
     currentIndex=0
 
-    t=clips[currentClip][0]
-    clipName=t[-25:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
     templateData = {
       'mySize': mySize,
-      'clipName' : clipName
+      'clipName' : getClipName()
       }
     return render_template('index.html', **templateData)
 
@@ -46,7 +75,7 @@ def index():
 
 @app.route('/command', methods=['GET', 'POST'])
 def command():
-    global guiCmd, mySize, guiCmdOld, currentClip, currentIndex, response
+    global guiCmd, mySize, guiCmdOld, currentClip, currentIndex, response, clips
 
     if request.method == 'POST':
         if 'sf' in request.form.values():
@@ -65,18 +94,12 @@ def command():
                 mySize=2
             elif mySize==2:
                 mySize=0
+        elif 'sav' in request.form.values():
+            guiCmd=5
+        elif 'delAll' in request.form.values():
+            guiCmd=6
 
-    if guiCmd==2: #play one clip
-        if guiCmd==guiCmdOld:
-            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
-        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
-        currentIndex=0
-    elif guiCmd==3:#back one clip
-        if guiCmd==guiCmdOld:
-            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
-        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
-        currentIndex=0
-    elif guiCmd==0:#forward one Pic
+    if guiCmd==0:#forward one Pic
         currentIndex=currentIndex+1
         if currentIndex==len(clips[currentClip]):
             currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
@@ -88,19 +111,42 @@ def command():
             currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
             currentIndex=0
         response = Response(open(clips[currentClip][currentIndex],'rb').read())
-    else:
+    elif guiCmd==2: #play one clip
+        if guiCmd==guiCmdOld:
+            currentClip=next((key for key in sorted(clips.keys()) if key > currentClip),currentClip)
+        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
+        currentIndex=0
+    elif guiCmd==3:#back one clip
+        if guiCmd==guiCmdOld:
+            currentClip=next((key for key in reversed(sorted(clips.keys())) if key < currentClip),currentClip)
+        response=Response(gen(currentClip),mimetype='multipart/x-mixed-replace; boundary=frame')
+        currentIndex=0
+    elif guiCmd==4:#Change Pic Size
         response = Response(open(clips[currentClip][currentIndex],'rb').read())
+    elif guiCmd==5:#Save Pic
+        files=clips[currentClip]
+        for f in files:
+            name=getName(f)
+            print "Name %s File %s" % (name,f)
+            #newFile='/home/dlacres/pic/+name'
+            #print newFile
+            shutil.copyfile(f,'/home/dlacres/pic/'+name)
+    elif guiCmd==6:#Delete All Pictures
+        for key in sorted(clips.keys()):
+            files=clips[key]
+            for file in files:
+                os.remove(file)
         
 
     guiCmdOld=guiCmd                
     print 'Clip %s index %s' % (currentClip,currentIndex)
 
-    t=clips[currentClip][0]
-    clipName=t[-25:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
     templateData = {
       'mySize': mySize,
-      'clipName' : clipName
+      'clipName' : getClipName()
       }
+
+    print templateData
     return render_template('index.html', **templateData)
 
 def gen(stringNumber):
