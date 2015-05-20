@@ -6,6 +6,7 @@ from collections import defaultdict
 app = Flask(__name__)
 
 #ret=subprocess.call('ping -c 1 192.168.1.108',shell=True,stdout=open('/dev/null','w'),stderr=subprocess.STDOUT)
+# Motion %cam_%Y_%m_%d_%v_%H_%M_%S_%q
 
 i=0
 files='abc'
@@ -20,9 +21,18 @@ currentIndex=0
 guiCmd=0
 guiCmdOld=4
 mySize=0
-response=0
+#response=0
+#cam=''
+#month=''
+#day=''
+#year=''
+#hour=''
+#min=''
+#sec=''
+#seq=''
 
 def getName(s):
+    global cam,year,month,day,seq,hour,min,sec,num
     for c in s:
         if c=='/':
             s=''
@@ -30,53 +40,98 @@ def getName(s):
             s=s+c
     return s
 
-def getIndex(s):
-    numDayStr = s[-15:-13]
-    if s[-25:-24]=='/' or s[-25:-24]=='_' or s[-25:-24]=='-':
-        numIdxStr = s[-24:-22]
-        numCamStr = s[-27:-25]
-    else:
-        numIdxStr = s[-25:-22]
-        numCamStr = s[-28:-26]
-    numStr=numCamStr+numIdxStr+numDayStr
-    print numStr
-    return int(numStr)
 
-def getClipName(): 
-    global clips
-    t=clips[currentClip][0]
-    if t[-25:-24]=='/' or t[-25:-24]=='_' or t[-25:-24]=='-':
-        clipName=t[-24:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
+def splitString(s):
+  idx=0
+  astr=''
+  listStr=['']
+
+  for c in s:
+    if c=='_' or c=='.':
+      listStr.append(aStr)
+      aStr=''
     else:
-        clipName=t[-25:-22]+' '+t[-17:-15]+'-'+t[-15:-13]+' '+t[-13:-11]+':'+t[-11:-9]+' ['+str(len(clips[currentClip]))+']'
+      if c=='/':
+        aStr=''
+      else:
+        aStr=aStr+c
+  listStr.append(aStr)
+
+  return listStr
+
+# cam year month day seq hour min sec num
+# 1   2    3     4   5   6    7   8   9
+
+def getIndex(s):
+    num=0
+
+    l=splitString(s)
+
+    #      cam  mon  day
+    numStr=l[1]+l[3]+l[4]
+    try:
+        num=int(numStr)
+    except ValueError:
+        print 'ERROR 1'
+    return num
+
+def getClipName(s,listLen): 
+    monStr='ERR'
+
+    l=splitString(s)
+
+    month=l[3]
+    if month=='01': monStr='Jan'
+    if month=='02': monStr='Feb'
+    if month=='03': monStr='Mar'
+    if month=='04': monStr='Apr'
+    if month=='05': monStr='May'
+    if month=='06': monStr='Jun'
+    if month=='07': monStr='Jul'
+    if month=='08': monStr='Aug'
+    if month=='09': monStr='Sep'
+    if month=='10': monStr='Oct'
+    if month=='11': monStr='Nov'
+    if month=='12': monStr='Dec'
+
+    clipName='['+l[5]+'] '+monStr+','+l[4]+','+l[2]+' '+l[6]+':'+l[7]+':'+l[8]+' ['+str(listLen)+']'
+
     return clipName
 
 @app.route('/')
 def index():
-    global files, clips, currentClip, currentIndex, mySize
-    files=glob.glob("/home/dlacres/tmp/*.jpg")
+    global files, clips, currentClip, currentIndex, mySize, response
+    files=glob.glob("/home/pi/pic/*.jpg")
     files.sort()
-    for f in files:
-        numberString=getIndex(f)
-        clips[numberString].append(f)
-        print "File %s, number %d" % (f,numberString)
+    #print files
 
-    currentClip=min(clips.keys())
+    for f in files:
+        #print 'f=%s' % f
+        number=getIndex(f)
+        print 'AT 1 numStr %d' % number
+        clips[number].append(f)
+        #print "AT 2 File %s, number %d" % (f,number)
+
+    print "AT 3 Clips.keys = %s" % clips.keys()
+    currentClip=clips.keys()[0]
+    print "Current Clip %s" % currentClip
 
     currentIndex=0
+    response = Response(open(clips[currentClip][currentIndex],'rb').read())
 
     templateData = {
       'mySize': mySize,
-      'clipName' : getClipName()
+      'clipName' : getClipName(clips[currentClip][currentIndex],len(clips[currentClip]))
       }
+    print "AT 4"
     return render_template('index.html', **templateData)
 
-#    return render_template('index.html')
 
 @app.route('/command', methods=['GET', 'POST'])
 def command():
     global guiCmd, mySize, guiCmdOld, currentClip, currentIndex, response, clips
 
+    print "AT 6"
     if request.method == 'POST':
         if 'sf' in request.form.values():
             guiCmd=0 #Step Forward
@@ -98,6 +153,7 @@ def command():
             guiCmd=5
         elif 'delAll' in request.form.values():
             guiCmd=6
+    print 'AT 7 guiCmd = %d' % guiCmd
 
     if guiCmd==0:#forward one Pic
         currentIndex=currentIndex+1
@@ -127,7 +183,7 @@ def command():
         files=clips[currentClip]
         for f in files:
             name=getName(f)
-            print "Name %s File %s" % (name,f)
+            #print "Name %s File %s" % (name,f)
             #newFile='/home/dlacres/pic/+name'
             #print newFile
             shutil.copyfile(f,'/home/dlacres/pic/'+name)
@@ -139,14 +195,14 @@ def command():
         
 
     guiCmdOld=guiCmd                
-    print 'Clip %s index %s' % (currentClip,currentIndex)
-
+    #print 'Clip %s index %s' % (currentClip,currentIndex)
+    print clips[currentClip][currentIndex]
     templateData = {
       'mySize': mySize,
-      'clipName' : getClipName()
+      'clipName' : getClipName(clips[currentClip][currentIndex],len(clips[currentClip]))
       }
 
-    print templateData
+    #print templateData
     return render_template('index.html', **templateData)
 
 def gen(stringNumber):
@@ -158,7 +214,8 @@ def gen(stringNumber):
         frames=reversed(clips[stringNumber])
 
     for frame in frames:
-        time.sleep(.1)
+        time.sleep(.2)
+        print 'AT 7 %s' % frame
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + open(frame,'rb').read() + b'\r\n')
 
