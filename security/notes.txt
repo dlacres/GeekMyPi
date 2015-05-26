@@ -1,4 +1,24 @@
 # Start by installing rabbitmq
 
+# ex 1 Hello World
+Run receive2.py
+Each time send2.py is run, the receiver prints out the new message.
 
+# ex 2 Round Robin Example
+Run 2 copies of worker.py.
+Each time new_task.py is run, the next process prints out the message (round robin style)
+
+# ex 3 publish subscribe example
+Run 2 copies of receive_logs.py. They will print out messages received
+Run emit_log.py. Each time this is run, both receivers will print out a message.
+
+# ex 4 pub sub with routing
+Run 2 copies of receive_logs_direct:
+  1 - python receive_logs_direct.py error
+  2 - python receive_logs_direct.py info warning error
+Emit different messages as follows:
+  a - python emit_logs_direct error "my error"
+  b - python emit_logs_direct warning "my warn"
+
+# ex 5
 
