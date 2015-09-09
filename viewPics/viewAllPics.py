@@ -34,7 +34,7 @@ def getScale(window, image):
     return scale
 
 
-window = pyglet.window.Window(fullscreen=True)
+window = pyglet.window.Window(600, 400)
 
 @window.event
 def on_draw():
@@ -56,7 +56,7 @@ if __name__ == '__main__':
       sprite = pyglet.sprite.Sprite(img)
       sprite.scale = getScale(window, img)
 
-      pyglet.clock.schedule_interval(updateImage, .1)
+      pyglet.clock.schedule_interval(updateImage, .05)
 
       pyglet.app.run()
     except StopIteration:
